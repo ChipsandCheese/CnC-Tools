@@ -12,30 +12,38 @@
 
 #ifdef __MINGW32__
 
+int *AFFINITY = NULL;
+
 int getThreadCount()
 {
     SYSTEM_INFO sysinfo;
     GetSystemInfo(&sysinfo);
+    // We will assume thread affinity stuff is always initialized here
+    // This means getThreadCount must be called before getting/setting affinity
+    if (AFFINITY == NULL) {
+        int thread_count = sysinfo.dwNumberOfProcessors;
+        AFFINITY = malloc(thread_count * sizeof(int));
+        memset(AFFINITY, 0, thread_count * sizeof(int));
+    }
     return sysinfo.dwNumberOfProcessors;
 }
 
-int getAffinity(pthread_t thread, int proc)
+int getAffinity(pthread_t thread)
 {
-    // This isn't guaranteed to work on systems with more than 64 processors
-    // To fix this we need to look into process groups
-    DWORD_PTR processMask = 1 << proc;
-    DWORD_PTR systemMask = 1 << proc;
-    GetProcessAffinityMask(pthread_gethandle(thread), &processMask, &systemMask);
-    return 0; //FINISH THIS!!!!!!!!
-}
+    return AFFINITY[thread];}
 
 int setAffinity(pthread_t thread, int proc)
 {
     // This isn't guaranteed to work on systems with more than 64 processors
     // To fix this we need to look into process groups
     DWORD_PTR mask = 1 << proc;
+    int status = SetProcessAffinityMask(pthread_gethandle(thread), mask);
 
-    return !SetProcessAffinityMask(pthread_gethandle(thread), mask);
+    // Set affinity in our array
+    if (status != 0) 
+        AFFINITY[thread] = proc;
+    
+    return !status;
 }
 #elif __unix__
 

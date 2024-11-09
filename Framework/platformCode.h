@@ -22,7 +22,7 @@
 #endif
 
 int getThreadCount();
-int getAffinity(pthread_t thread, int proc);
+int getAffinity(pthread_t thread);
 int setAffinity(pthread_t thread, int proc);
 int createThread(pthread_t *handle, void *(*routine)(void *), void *argument);
 int joinThread(pthread_t handle, void **retval);
