@@ -30,7 +30,8 @@ int getThreadCount()
 
 int getAffinity(pthread_t thread)
 {
-    return AFFINITY[thread];}
+    return AFFINITY[thread];
+}
 
 int setAffinity(pthread_t thread, int proc)
 {
