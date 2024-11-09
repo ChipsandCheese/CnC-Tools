@@ -18,8 +18,6 @@ int getThreadCount()
 {
     SYSTEM_INFO sysinfo;
     GetSystemInfo(&sysinfo);
-    // We will assume thread affinity stuff is always initialized here
-    // This means getThreadCount must be called before getting/setting affinity
     if (AFFINITY == NULL) {
         int thread_count = sysinfo.dwNumberOfProcessors;
         AFFINITY = malloc(thread_count * sizeof(int));
@@ -30,11 +28,23 @@ int getThreadCount()
 
 int getAffinity(pthread_t thread)
 {
+    if (AFFINITY == NULL) {
+        int thread_count = getThreadCount();
+        AFFINITY = malloc(thread_count * sizeof(int));
+        memset(AFFINITY, 0, thread_count * sizeof(int));
+        return 0;
+    }
     return AFFINITY[thread];
 }
 
 int setAffinity(pthread_t thread, int proc)
 {
+    if (AFFINITY == NULL) {
+        int thread_count = getThreadCount();
+        AFFINITY = malloc(thread_count * sizeof(int));
+        memset(AFFINITY, 0, thread_count * sizeof(int));
+    }
+    
     // This isn't guaranteed to work on systems with more than 64 processors
     // To fix this we need to look into process groups
     DWORD_PTR mask = 1 << proc;
