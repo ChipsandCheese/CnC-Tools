@@ -3,8 +3,8 @@
  * Program Name: CnC Common Headers
  * File Name: platformCode.c
  * Date Created: October 27, 2024
- * Date Updated: October 27, 2024
- * Version: 0.3
+ * Date Updated: November 9, 2024
+ * Version: 0.4
  * Purpose: This file contains all functions that interact with platform-specific functionality
  */
 
