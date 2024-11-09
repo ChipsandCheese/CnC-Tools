@@ -4,8 +4,8 @@
  * Program Name: CnC Common Headers
  * File Name: storage.h
  * Date Created: February 4, 2024
- * Date Updated: October 19, 2024
- * Version: 0.3
+ * Date Updated: October 26, 2024
+ * Version: 0.4
  * Purpose: Provides a struct for storing results and functions for file logging
  */
 #include <stdio.h>
@@ -105,14 +105,24 @@ CnCData read_CNC(char fileName[])
  * @Param resultList: an array of results.
  * @Param resultCount: The length of the resultList array passed in.
  * @Param columnCount: The number of columns per line
- * @Return: 0 if successful, -1 for IO error
+ * @Return: 0 if successful, -1 for IO error, -2 for filename error
  */
 
 int write_CNC(char testName[], double resultList[], uint32_t resultCount, uint32_t columnCount, char (*columnNames)[256])
 {
-    //This block is unfinished and does not yet handle file extension or naming properly
     FILE *file;
-    if((file = fopen(testName, "w")) == NULL) return -1;
+
+    //Enforce maximum file name limit of 255 or lower in accordance with most restrictive OS limits
+    if(strlen(testName) > 250)
+        return -2;
+
+    //Append .cnc to the testName input.  File type is ALWAYS .cnc
+    char AppendedName[255];
+    strcpy(AppendedName, testName);
+    strcat_s(AppendedName, 255, ".cnc");
+
+    if((file = fopen(AppendedName, "w")) == NULL)
+        return -1;
 
     //Writes the file metadata to the first row of the csv
     fprintf(file, "%u,", VERSIONCODE);
