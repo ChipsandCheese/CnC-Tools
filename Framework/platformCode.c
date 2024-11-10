@@ -4,7 +4,7 @@
  * File Name: platformCode.c
  * Date Created: October 27, 2024
  * Date Updated: November 9, 2024
- * Version: 0.4
+ * Version: 0.4.1
  * Purpose: This file contains all functions that interact with platform-specific functionality
  */
 
@@ -20,7 +20,7 @@ int getThreadCount()
     GetSystemInfo(&sysinfo);
     if (AFFINITY == NULL) {
         int thread_count = sysinfo.dwNumberOfProcessors;
-        AFFINITY = malloc(thread_count * sizeof(int));
+        AFFINITY = (int *) malloc(thread_count * sizeof(int));
         memset(AFFINITY, 0, thread_count * sizeof(int));
     }
     return sysinfo.dwNumberOfProcessors;
@@ -30,7 +30,7 @@ int getAffinity(pthread_t thread)
 {
     if (AFFINITY == NULL) {
         int thread_count = getThreadCount();
-        AFFINITY = malloc(thread_count * sizeof(int));
+        AFFINITY = (int *) malloc(thread_count * sizeof(int));
         memset(AFFINITY, 0, thread_count * sizeof(int));
         return 0;
     }
@@ -41,7 +41,7 @@ int setAffinity(pthread_t thread, int proc)
 {
     if (AFFINITY == NULL) {
         int thread_count = getThreadCount();
-        AFFINITY = malloc(thread_count * sizeof(int));
+        AFFINITY = (int *) malloc(thread_count * sizeof(int));
         memset(AFFINITY, 0, thread_count * sizeof(int));
     }
     
@@ -82,11 +82,3 @@ int setAffinity(pthread_t thread, int proc)
 }
 #endif
 
-int createThread(pthread_t *handle, void *(*routine)(void *), void *argument)
-{
-    return pthread_create(handle, NULL, routine, argument);
-}
-
-int joinThread(pthread_t handle, void **retval) {
-    return pthread_join(handle, retval);
-}

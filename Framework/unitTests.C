@@ -42,15 +42,45 @@ int testStorage()
     return 0;
 }
 
+/*
+ * Test the affinity getter/setter
+ * @Return: 0 if successful, 1 for verification failure
+ */
+
 int testAffinity()
 {
+    pthread_t thread;
+    int affinity = 1;
+
+    setAffinity(thread, affinity);
+    if(getAffinity(thread) != affinity)
+        return 1;
     return 0;
 }
 
+/*
+ * Just a function to occupy the cpu for a bit
+ */
+int delay(int iterations)
+{
+    volatile double a = 34.567876867;
+    volatile double b = 24.313214355;
+    for(int i; i < iterations; i++);
+    {
+        a += b;
+    }
+}
+
+/*
+ * Test the timing function
+ * @Return: time in ns for execution, or 0 for failure
+ */
 int testTiming()
 {
-    return 0;
+    return timeExecution(delay, 1000000000);
 }
+
+
 
 int main(int argc, char *argv[])
 {
@@ -63,7 +93,7 @@ int main(int argc, char *argv[])
     printf("Thread Affinity Test exited with return code %i\n", affinityResult);
 
     int timingResult = testTiming();
-    printf("Timing Test exited with return code %i\n", timingResult);
+    printf("Timing Test exited with result time of %i nanoseconds\n", timingResult);
 
     //Cleans up UnitTest.cnc by default.
     if(!remove(TESTNAME))
