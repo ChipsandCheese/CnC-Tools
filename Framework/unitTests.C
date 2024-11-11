@@ -2,13 +2,16 @@
  * Program Name: CnC Framework Unit Tests
  * File Name: unitTests.c
  * Date Created: October 19, 2024
- * Date Updated: November 9, 2024
- * Version: 0.3
+ * Date Updated: November 11, 2024
+ * Version: 0.4
  * Purpose: Unit Tests for the Framework
  */
 
+#include <platformCode.h>
 #include <stdio.h>
 #include <storage.h>
+#include <timing.h>
+#include <pthread.h>
 
 #define TESTNAME "UnitTest.cnc"
 
@@ -77,7 +80,7 @@ int delay(int iterations)
  */
 int testTiming()
 {
-    return timeExecution(delay, 1000000000);
+    return timeExecution((void (*)(int))delay, 1000000000);
 }
 
 
