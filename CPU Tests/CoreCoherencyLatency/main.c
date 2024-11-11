@@ -150,7 +150,7 @@ void *(*testFunc)(void *) = LatencyTestThread;
  * @Param nolock: Tells the benchmark to use the non-locking test algorithm.
  * @Param offsets: TODO.
  * @Param parallel: How many processors to test in parallel.
- * @Param outfile: File path for output data.
+ * @Param outfile: File path for output data, automatically has `.cnc` appended.
  * @return: Status code, zero is successful.
  */
 int main(int argc, char *argv[]) {
