@@ -150,12 +150,14 @@ void *(*testFunc)(void *) = LatencyTestThread;
  * @Param nolock: Tells the benchmark to use the non-locking test algorithm.
  * @Param offsets: TODO.
  * @Param parallel: How many processors to test in parallel.
+ * @Param outfile: File path for output data.
  * @return: Status code, zero is successful.
  */
 int main(int argc, char *argv[]) {
     double **latencies;
     int *parallelTestState;
     int numProcs, offsets = 1, parallelismFactor = 1;
+    char *outFilePath;
     uint64_t iter = ITERATIONS;
     uint64_t *bouncyArr;
 
@@ -183,6 +185,11 @@ int main(int argc, char *argv[]) {
                 argIdx++;
                 parallelismFactor = atoi(argv[argIdx]);
                 fprintf(stderr, "Will go for %d runs in parallel\n", parallelismFactor);
+            }
+            else if (strncmp(arg, "outfile", 7) == 0) {
+                argIdx++;
+                outFilePath = argv[argIdx];
+                fprintf(stderr, "Outputting data to %s\n", outFilePath);
             }
         }
     }
@@ -272,7 +279,7 @@ int main(int argc, char *argv[]) {
         snprintf(&names[i][0], 256, "Proc%u\0", i);
 
     if (write_CNC(
-        "CoreCoherencyLatency",
+        outFilePath,
         latencies[0],
         numProcs * numProcs,
         numProcs,
