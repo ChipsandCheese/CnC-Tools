@@ -144,16 +144,14 @@ int write_CNC(char testName[], double resultList[], uint32_t resultCount, uint32
     for(int i = 0; i < resultCount; i++)
     {
         fprintf(file, "%lf", resultList[i]);
-        if(columnCursor < columnCount)
-        {
-            if (i + 1 != resultCount)
-                fprintf(file, ",");
+        if(columnCursor < columnCount) {
             columnCursor++;
-        }
-        else
-        {
-            fprintf(file, "\n");
-            columnCursor = 0;
+            if (columnCursor == columnCount) {
+                fprintf(file, "\n");
+                columnCursor = 0;
+            }
+            else
+                fprintf(file, ",");
         }
     }
 
