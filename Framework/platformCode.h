@@ -19,6 +19,11 @@
 #include <pthread.h>
 #include <unistd.h>
 
+#ifndef strcat_s
+// GNU doesn't implement this in default GCC, so it only works in MINGW?????????
+int strcat_s(char *dest, int destsz, const char *src);
+#endif
+
 #endif
 
 int getThreadCount();

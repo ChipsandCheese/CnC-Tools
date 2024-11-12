@@ -12,10 +12,32 @@
 #include <storage.h>
 #include <timing.h>
 #include <pthread.h>
+#include <string.h>
 
-#define TESTNAME "UnitTest.cnc"
+#define TESTNAME "UnitTest"
 
-CnCData data = {}; //Test struct needs to be populated
+double DEFAULT_RESULTS[16] = {
+    0.0, 1.0, 2.0, 3.0,
+    4.0, 5.0, 6.0, 7.0,
+    8.0, 9.0, 10.0, 11.0,
+    12.0, 13.0, 14.0, 15.0
+};
+
+char DEFAULT_NAMES[16][256] = {
+    "COLUMN0",
+    "COLUMN1",
+    "COLUMN2",
+    "COLUMN3"
+};
+
+CnCData data = {
+    .isMalformed = 0,
+    .testName = {},
+    .resultCount = 16,
+    .columnCount = 4,
+    .columnNames = &DEFAULT_NAMES[0],
+    .resultList = &DEFAULT_RESULTS[0],
+}; //Test struct needs to be populated
 
 /*
  * Test the storage API's ability to read and write accurately
@@ -52,11 +74,12 @@ int testStorage()
 
 int testAffinity()
 {
-    pthread_t thread;
+    pthread_t thread = pthread_self();
     int affinity = 1;
 
     setAffinity(thread, affinity);
-    if(getAffinity(thread) != affinity)
+    int new_affinity = getAffinity(thread);
+    if(new_affinity == -1 || new_affinity != affinity)
         return 1;
     return 0;
 }
@@ -98,14 +121,18 @@ int main(int argc, char *argv[])
     int timingResult = testTiming();
     printf("Timing Test exited with result time of %i nanoseconds\n", timingResult);
 
+    //Append .cnc to the testName input.  File type is ALWAYS .cnc
+    char AppendedName[255];
+    strcpy(AppendedName, TESTNAME);
+    strcat_s(AppendedName, 255, ".cnc");
     //Cleans up UnitTest.cnc by default.
-    if(!remove(TESTNAME))
+    if(!remove(AppendedName))
     {
-        printf("%s deleted successfully", TESTNAME);
+        printf("%s deleted successfully\n", AppendedName);
     }
     else
     {
-        printf("%s could not be deleted", TESTNAME);
+        printf("%s could not be deleted\n", AppendedName);
     }
     return 0;
 }

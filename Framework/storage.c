@@ -1,3 +1,5 @@
+// Bring in the platformCode, just in case we're using GCC and resultingly don't have access to strcat_s :)
+#include <platformCode.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,6 +19,12 @@ const uint8_t VERSIONCODE = 1;
 
 CnCData read_CNC(char fileName[])
 {
+    //Copied for parity with write_CNC
+    //Append .cnc to the testName input.  File type is ALWAYS .cnc
+    char AppendedName[255];
+    strcpy(AppendedName, fileName);
+    strcat_s(AppendedName, 255, ".cnc");
+
     CnCData data = { .isMalformed = 1 };
     char buffer[BUFFERLIMIT];
     char *bufferSave;
