@@ -8,173 +8,155 @@
  */
 
 #include <platformCode.h>
-#include <storage.h>
-#include <stdint.h>
 #include <pthread.h>
-#include <sys/time.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <timing.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define ITERATIONS 10000000;
+typedef union Result {
+    _Atomic uint64_t raw;
+    double data;
+} Result;
 
 typedef struct LatencyThreadData {
     uint64_t start;
     uint64_t iters;
+    // This is atomic to ease the transfer across thread boundaries
     volatile uint64_t *target;
-    uint32_t processorIndex;
+    uint32_t processor_index;
+    _Atomic uint64_t result;
 } LatencyThreadData;
 
 typedef struct LatencyPairRunData {
     uint32_t proc1;
     uint32_t proc2;
     uint64_t iter;
-    double result;
+    Result *result;
     uint64_t *target;
+    void (*thread_func)(LatencyThreadData *);
 } LatencyPairRunData;
 
 /*
- * Tests the latency using a non-locking algorithm.
- * @Param param: Pointer to the LatencyThreadData structure to operate on.
- * @return: Will always return NULL.
+ * Tests the latency using a locking algorithm.
+ * @Param latencyData: Pointer to the LatencyThreadData structure to operate on.
  */
-void *NoLockLatencyTestThread(void *param) {
-    LatencyThreadData *latencyData = (LatencyThreadData *)param;
+void latencyTestThread(LatencyThreadData *latencyData) {
     uint64_t current = latencyData->start;
 
-    setAffinity(pthread_self(), latencyData->processorIndex);
-
     while (current <= 2 * latencyData->iters) {
-        if (*(latencyData->target) == current - 1) {
-            *(latencyData->target) = current;
-            current += 2;
-        } 
+        if (__sync_bool_compare_and_swap(latencyData->target, current - 1, current)) current += 2;
     }
-
-    return NULL;
-} 
+}
 
 /*
- * Run all the tests and gather latency data.
- * @Param proc1: Processor index for the first processor in the test.
- * @Param proc2: Processor index for the second processor in the test.
- * @Param iter: Number of times to iterate over the tests, higher is more accurate.
- * @Param lat1: Pointer to LatencyThreadData for the first processor.
- * @Param lat2: Pointer to LatencyThreadData for the second processor.
- * @Param threadfunc: Function pointer to test across both processors.
- * @return: Latency between both processors.
- */
-double TimeThreads(uint32_t proc1,
-                  uint32_t proc2,
-                  uint64_t iter,
-                  LatencyThreadData *lat1,
-                  LatencyThreadData *lat2,
-                  void *(*threadFunc)(void *)) {
-    struct timeval startTv, endTv;
-    struct timezone startTz, endTz;
-    pthread_t testThreads[2];
-    int t1rc, t2rc;
-    void *res1, *res2;
+ @Param data: Pointer to array of pointer-sized arguments
+ @Subparam data[0] func: Function to run in the test
+ @Subparam data[1] latencyData: LatencyThreadData, passed to test function
+ @Return: Returns a pointer to where the result was stored.
+*/
+void *timeThread(void *raw) {
+    uint64_t *data = (uint64_t *)raw;
+    void (*func)(void *) = (void (*)(void *))data[0];
+    LatencyThreadData *latency_data = (LatencyThreadData *)data[1];
 
-    gettimeofday(&startTv, &startTz);
-    t1rc = pthread_create(&testThreads[0], NULL, threadFunc, (void *)lat1);
-    t2rc = pthread_create(&testThreads[1], NULL, threadFunc, (void *)lat2);
+    setAffinity(pthread_self(), latency_data->processor_index);
+    uint64_t ns = timeExecution(func, latency_data, latency_data->iters);
+    atomic_store(&latency_data->result, ns);
+
+    return (void *)&latency_data->result;
+}
+
+/*
+ * @Param proc1: Processor index for first thread.
+ * @Param proc2: Processor index for second thread.
+ * @Param iter: How many iterations to perform.
+ * @Param lat1: LatencyThreadData passed to threadFunc on first thread.
+ * @Param lat1: LatencyThreadData passed to threadFunc on second thread.
+ * @Param threadFunc: Function to benchmark.
+*/
+double spawnTest(
+    uint64_t iter,
+    LatencyThreadData *lat1,
+    LatencyThreadData *lat2,
+    void (*thread_func)(LatencyThreadData *)
+) {
+    pthread_t test_threads[2];
+    int t1rc, t2rc;
+    _Atomic uint64_t *res1 = NULL, *res2 = NULL;
+
+    // Passed as params to timeThread
+    uint64_t args0[2] = {(uint64_t)thread_func, (uint64_t)lat1};
+    uint64_t args1[2] = {(uint64_t)thread_func, (uint64_t)lat2};
+    
+    t1rc = pthread_create(&test_threads[0], NULL, timeThread, &args0);
+    t2rc = pthread_create(&test_threads[1], NULL, timeThread, &args1);
     if (t1rc != 0 || t2rc != 0) {
       fprintf(stderr, "Could not create threads\n");
       return 0;
     }
 
-    pthread_join(testThreads[0], &res1);
-    pthread_join(testThreads[1], &res2);
-    gettimeofday(&endTv, &endTz);
+    pthread_join(test_threads[0], (void **)&res1);
+    pthread_join(test_threads[1], (void **)&res2);
 
-    uint64_t time_diff_ms = 1000 * (endTv.tv_sec - startTv.tv_sec) + ((endTv.tv_usec - startTv.tv_usec) / 1000);
-    double latency = 1e6 * (double)time_diff_ms / (double)iter;
+    double average_ns = (double)(atomic_load(res1) + atomic_load(res2)) / 2.0;
+    double latency = average_ns / (double)iter;
     return latency;
 }
 
 
 /*
- * Test the latency across two logical processors using the TimeThreads function.
- * @Param param: Pointer to the LatencyThreadData structure to clone for both.
- * @return: Will always return NULL directly, but returns a double in the provided LatencyThreadData.
- */
-void *RunTest(void *param) {
-  LatencyPairRunData *pairRunData = (LatencyPairRunData *)param;
-  uint32_t processor1 = pairRunData->proc1;
-  uint32_t processor2 = pairRunData->proc2;
-  uint64_t iter = pairRunData->iter;
-  LatencyThreadData lat1, lat2;
-  double latency;
+ * @Param raw: Void pointer to LatencyPairRunData structure.
+ * @Return: Always returns NULL.
+*/
+void *runTest(void *raw) {
+    LatencyPairRunData *data = (LatencyPairRunData *)raw;
+    LatencyThreadData lat1, lat2;
+    Result latency = {.data = 0.0};
 
-  *(pairRunData->target) = 0;
-  lat1.iters = iter;
-  lat1.start = 1;
-  lat1.target = pairRunData->target;
-  lat1.processorIndex = processor1;
-  lat2.iters = iter;
-  lat2.start = 2;
-  lat2.target = pairRunData->target;
-  lat2.processorIndex = processor2;
-  latency = TimeThreads(processor1, processor2, iter, &lat1, &lat2, NoLockLatencyTestThread);
-  fprintf(stderr, "%d to %d: %f ns\n", processor1, processor2, latency);
-  pairRunData->result = latency;
-  return NULL;
-}
-
-
-/*
- * Tests the latency using a locking algorithm.
- * @Param param: Pointer to the LatencyThreadData structure to operate on.
- * @return: Will always return NULL.
- */
-void *LatencyTestThread(void *param) {
-    LatencyThreadData *latencyData = (LatencyThreadData *)param;
-    uint64_t current = latencyData->start;
-
-    setAffinity(pthread_self(), latencyData->processorIndex);
-    //fprintf(stderr, "thread %ld set affinity %d\n", gettid(), latencyData->processorIndex);
-
-    while (current <= 2 * latencyData->iters) {
-        if (__sync_bool_compare_and_swap(latencyData->target, current - 1, current)) current += 2;
-    }
-
+    *data->target = 0;
+    lat1.iters = data->iter;
+    lat2.iters = data->iter;
+    lat1.processor_index = data->proc1;
+    lat2.processor_index = data->proc2;
+    // This is where each thread will start accessing the target data
+    lat1.start = 1;
+    lat2.start = 2;
+    lat1.target = data->target;
+    lat2.target = data->target;
+    lat1.result = 0.0;
+    lat2.result = 0.0;
+    latency.data = spawnTest(data->iter, &lat1, &lat2, data->thread_func) / 2;
+    fprintf(stderr, "%d to %d: %lf ns\n", lat1.processor_index, lat2.processor_index, latency.data);
+    atomic_store(&data->result->raw, latency.raw);
     return NULL;
 }
 
-void *(*testFunc)(void *) = LatencyTestThread;
+#define ITERS 10000000
 
 /*
- * Runs latency tests across all present processors, and then outputs the results.
- * @Param iterations: Number of iterations to use in the latency tests, higher is more accurate.
- * @Param nolock: Tells the benchmark to use the non-locking test algorithm.
- * @Param offsets: TODO.
- * @Param parallel: How many processors to test in parallel.
- * @Param outfile: File path for output data, automatically has `.cnc` appended.
- * @return: Status code, zero is successful.
- */
-int main(int argc, char *argv[]) {
-    double **latencies;
-    int *parallelTestState;
-    int numProcs, offsets = 1, parallelismFactor = 1;
-    char *outFilePath;
-    uint64_t iter = ITERATIONS;
-    uint64_t *bouncyArr;
+ * Runs a core coherency latency test, this determines the average latency required to perform a transfer across cores.
+ * @Param parallel: Number of threads to attempt to run in parallel, the program may run fewer threads than specified by this number.
+ * @Param iterations: How many times to do the test function, higher means the results will be more precise, but slower to finish.
+ * @Param offsets: How many offsets into the cachelines to test.
+ * @Return: Status code, zero indicates success.
+*/
+int main(int argc, char **argv) {
+    int processors = getThreadCount();
+    int parallelism = 1;
+    int offsets = 1;
+    int iterations = ITERS;
 
-    numProcs = getThreadCount();
-    fprintf(stderr, "Number of CPUs: %u\n", numProcs);
-
+    // Collect any command-line arguments
     for (int argIdx = 1; argIdx < argc; argIdx++) {
         if (*(argv[argIdx]) == '-') {
             char* arg = argv[argIdx] + 1;
             if (strncmp(arg, "iterations", 10) == 0) {
                 argIdx++;
-                iter = atoi(argv[argIdx]);
-                fprintf(stderr, "%lu iterations requested\n", iter);
-            }
-            else if (strncmp(arg, "nolock", 6) == 0) {
-                fprintf(stderr, "No locks, plain loads and stores\n");
-                testFunc = NoLockLatencyTestThread;
+                iterations = atoi(argv[argIdx]);
+                fprintf(stderr, "%d iterations requested\n", iterations);
             }
             else if (strncmp(arg, "offset", 6) == 0) {
                 argIdx++;
@@ -183,136 +165,123 @@ int main(int argc, char *argv[]) {
             }
             else if (strncmp(arg, "parallel", 8) == 0) {
                 argIdx++;
-                parallelismFactor = atoi(argv[argIdx]);
-                fprintf(stderr, "Will go for %d runs in parallel\n", parallelismFactor);
-            }
-            else if (strncmp(arg, "outfile", 7) == 0) {
-                argIdx++;
-                outFilePath = argv[argIdx];
-                fprintf(stderr, "Outputting data to %s\n", outFilePath);
+                parallelism = atoi(argv[argIdx]);
+                fprintf(stderr, "Will go for %d runs in parallel\n", parallelism);
             }
         }
     }
 
-    latencies = (double **)malloc(sizeof(double *) * offsets);
-    parallelTestState = (int *)malloc(sizeof(int) * numProcs * numProcs);
-    memset(latencies, 0, sizeof(double) * offsets);
-    bouncyArr = aligned_alloc(4096 * parallelismFactor, 4096);
-    if (bouncyArr == NULL) {
-        fprintf(stderr, "Could not allocate aligned mem\n");
-        return 0;
-    } 
+    // Marks whether or not a thread has been tested or not
+    int *test_state = malloc(sizeof(int) * processors * processors);
+    // Allocate a buffer filled with pointers to the latency result tables for every offset
+    Result **results = malloc(sizeof(Result *) * offsets);
+    // Allocate a buffer for all the currently resident threads to operate on
+    uint64_t *targets = aligned_alloc(4096 * parallelism, 4096);
+    LatencyPairRunData *pair_run_data = malloc(sizeof(LatencyPairRunData) * parallelism);
+    if (results == NULL | targets == NULL) {
+        fprintf(stderr, "Failed to allocate buffer\n");
+        return -1;
+    }
 
-    LatencyPairRunData *pairRunData = (LatencyPairRunData *)malloc(sizeof(LatencyPairRunData) * parallelismFactor);
-
-    for (int offsetIdx = 0; offsetIdx < offsets; offsetIdx++) {
-        latencies[offsetIdx] = (double *)malloc(sizeof(double) * numProcs * numProcs);
-        memset(parallelTestState, 0, sizeof(int) * numProcs * numProcs);
-        double *latenciesPtr = latencies[offsetIdx];
+    for (int offset = 0; offset < offsets; offset++) {
+        // Allocate latency result table for this offset
+        results[offset] = malloc(sizeof(Result) * processors * processors);
+        Result *lat_ptr = results[offset];
+        if (lat_ptr == NULL) {
+            fprintf(stderr, "Failed to allocate latency result table\n");
+            return -2;
+        }
 
         while (1) {
-            // select parallelismFactor threads
-            int selectedParallelTestCount = 0;
-            memset(pairRunData, 0, sizeof(LatencyPairRunData) * parallelismFactor);
-            for (int i = 0;i < numProcs && selectedParallelTestCount < parallelismFactor; i++) {
-                for (int j = 0;j < numProcs && selectedParallelTestCount < parallelismFactor; j++) {
-                    if (j == i) { latenciesPtr[j + i * numProcs] = 0; continue; }
-                    if (parallelTestState[j + i * numProcs] == 1) {
-                        fprintf(stderr, "Thread unexpectedly did not complete\n");
-                        exit(0);
+            int selected_test_count = 0;
+            memset(pair_run_data, 0, sizeof(LatencyPairRunData) * parallelism);
+            // Schedule cores to test
+            for (int src = 0; src < processors && selected_test_count < parallelism; src++) {
+                for (int partner = 0; partner < processors && selected_test_count < parallelism; partner++) {
+                    if (src == partner) { 
+                        // We cant test the same CPU against itself, just set the latency to 0
+                        lat_ptr[partner + src * processors].data = 0.0; 
+                        continue; 
                     }
-                    if (parallelTestState[j + i * numProcs] == 0) {
-                        // neither thread can already have a pending run
-                        int validPair = 1;
-                        for (int c = 0; c < numProcs; c++) {
-                            if (parallelTestState[j + c * numProcs] == 1 || 
-                                parallelTestState[c + i * numProcs] == 1 ||
-                                parallelTestState[i + c * numProcs] == 1 ||
-                                parallelTestState[c + j * numProcs] == 1) {
-                                validPair = 0;
+                    if (test_state[partner + src * processors] == 1) {
+                        // We already reached this pair... how did we get here?
+                        fprintf(stderr, "Found unexpected partial thread pair %i and %i\n", src, partner);
+                        return -3;
+                    } else if (test_state[partner + src * processors] == 0) {
+                        int valid_pair = 1;
+                        for (int extra = 0; extra < processors; extra++) {
+                            // Ensure none of the currently selected somewhere else
+                            if (
+                                test_state[partner + extra * processors] == 1 || 
+                                test_state[extra + src * processors] == 1 ||
+                                test_state[src + extra * processors] == 1 ||
+                                test_state[extra + partner * processors] == 1
+                            ) {
+                                valid_pair = 0;
                                 break;
                             }
                         }
-
-                        if (!validPair) continue;
+                        
+                        if (!valid_pair) continue;
 
                         // for SMT enabled CPUs, check sibling threads. will do later
-                        parallelTestState[j + i * numProcs] = 1;
-                        pairRunData[selectedParallelTestCount].proc1 = i;
-                        pairRunData[selectedParallelTestCount].proc2 = j;
-                        pairRunData[selectedParallelTestCount].iter = iter;
-                        pairRunData[selectedParallelTestCount].result = 0.0f;
-                        pairRunData[selectedParallelTestCount].target = bouncyArr + (512 * selectedParallelTestCount + 8 * offsetIdx);
-                        fprintf(stderr, "Selected %d -> %d\n", i, j);
-                        selectedParallelTestCount++;
+                        // Mark this combination as in-flight
+                        test_state[partner + src * processors] = 1;
+                        pair_run_data[selected_test_count].proc1 = src;
+                        pair_run_data[selected_test_count].proc2 = partner;
+                        pair_run_data[selected_test_count].iter = iterations;
+                        pair_run_data[selected_test_count].result = &lat_ptr[partner + src * processors];
+                        pair_run_data[selected_test_count].thread_func = latencyTestThread;
+                        // Set the target for this test to be at cacheline selected_test_count
+                        // Offset it by the desired cacheline offsets, in 8 byte chunks
+                        pair_run_data[selected_test_count].target = targets + (512 * selected_test_count + 8 * offset);
+                        fprintf(stderr, "Selected %d -> %d\n", src, partner);
+                        selected_test_count++;
                     }
                 }
             }
             
-            if (selectedParallelTestCount == 0) break;
+            if (selected_test_count == 0) break;
 
             // Launch threads to test with
-            fprintf(stderr, "Selected %d pairs for parallel testing\n", selectedParallelTestCount);
-            pthread_t *testThreads = (pthread_t *)malloc(selectedParallelTestCount * sizeof(pthread_t));
-            memset(testThreads, 0, selectedParallelTestCount * sizeof(pthread_t));
-            for (int parallelIdx = 0; parallelIdx < selectedParallelTestCount; parallelIdx++) {
-                if (pairRunData[parallelIdx].proc1 == 0 && pairRunData[parallelIdx].proc2 == 0) break;
-                pthread_create(testThreads + parallelIdx, NULL, RunTest, (void *)(pairRunData + parallelIdx));
+            fprintf(stderr, "Selected %d pairs for parallel testing\n", selected_test_count);
+            pthread_t *test_threads = (pthread_t *)malloc(selected_test_count * sizeof(pthread_t));
+            memset(test_threads, 0, selected_test_count * sizeof(pthread_t));
+            for (int index = 0; index < selected_test_count; index++) {
+                if (pair_run_data[index].proc1 == 0 && pair_run_data[index].proc2 == 0) break;
+                pthread_create(test_threads + index, NULL, runTest, (void *)(pair_run_data + index));
             }
 
             // Wait for threads to end
-            for (int parallelIdx = 0; parallelIdx < selectedParallelTestCount; parallelIdx++) {
-                pthread_join(testThreads[parallelIdx], NULL);
-                int i = pairRunData[parallelIdx].proc1;
-                int j = pairRunData[parallelIdx].proc2;
-                latenciesPtr[j + i * numProcs] = pairRunData[parallelIdx].result;
-                parallelTestState[j + i * numProcs] = 2;
+            for (int index = 0; index < selected_test_count; index++) {
+                pthread_join(test_threads[index], NULL);
+                int src = pair_run_data[index].proc1;
+                int partner = pair_run_data[index].proc2;
+                //lat_ptr[partner + src * processors] = pair_run_data[index].result;
+                // Mark this combination as completed
+                test_state[partner + src * processors] = 2;
             }
 
-            free(testThreads);
+            free(test_threads);
         }
     }
 
-    // Allocate a place for all the column names to be placed, then fill it with names
-    char (*names)[256] = malloc(numProcs * (256 * sizeof(char)));
-    for (int i = 0; i < numProcs; i++)
-        snprintf(&names[i][0], 256, "Proc%u\0", i);
+    for (int offset = 0; offset < offsets; offset++) {
+        for (int src = 0; src < processors; src++) {
+            for (int partner = 0; partner < processors; partner++) {
+                // Ensure our caches are consistent
+                results[offset][partner + src * processors].raw = atomic_load_explicit(
+                    &results[offset][partner + src * processors].raw,
+                    memory_order_acquire
+                );
+                if (src == partner) printf("x");
+                else printf("%lf", results[offset][partner + src * processors].data);
 
-    if (write_CNC(
-        outFilePath,
-        latencies[0],
-        numProcs * numProcs,
-        numProcs,
-        names
-    ) != 0)
-        return -1;
-
-    // Print out data to the terminal
-    for (int offsetIdx = 0; offsetIdx < offsets; offsetIdx++) {
-        double *latenciesPtr = latencies[offsetIdx];
-        printf("Cache line offset: %d\n", offsetIdx);
-        
-        // Iterate over all possible processor combinations
-        for (int i = 0;i < numProcs; i++) {
-            for (int j = 0;j < numProcs; j++) {
-                // Print out a delimiter before we print the data, unless this is the first entry
-                if (j != 0) printf(",");
-
-                // If j and i are the same processors the just output an x.
-                if (j == i) printf("x");
-                // Print out the latency between processors j and i
-                // to maintain consistency, divide by 2 (see justification in windows version)
-                else printf("%f", latenciesPtr[j + i * numProcs] / 2);
+                if (partner + 1 == processors) printf("\n");
+                else printf(",");
             }
-            printf("\n");
         }
-
-        free(latenciesPtr);
     }
 
-    free(parallelTestState);
-    free(pairRunData);
-    free(latencies);
-    free(bouncyArr);
     return 0;
 }

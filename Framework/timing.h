@@ -17,6 +17,6 @@
  * @Param func: The pointer of the function being timed.
  * @Return: Time in nanoseconds (up to nanosecond precision).
  */
-uint64_t timeExecution(void (*func)(int i), uint64_t iterations);
+uint64_t timeExecution(void (*func)(void *), void *data, int iterations);
 
 #endif // TIMING_H
