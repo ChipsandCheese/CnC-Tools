@@ -55,7 +55,7 @@ int setAffinity(pthread_t thread, int proc)
     int status = SetProcessAffinityMask(pthread_gethandle(thread), mask);
 
     // Set affinity in our array
-    if (status != 0) 
+    if (status == 0) 
         AFFINITY[thread] = proc;
     
     return !status;
