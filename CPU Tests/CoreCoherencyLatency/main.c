@@ -52,10 +52,11 @@ void latencyTestThread(LatencyThreadData *latencyData) {
 }
 
 /*
- @Param data: Pointer to array of pointer-sized arguments
- @Subparam data[0] func: Function to run in the test
- @Subparam data[1] latencyData: LatencyThreadData, passed to test function
- @Return: Returns a pointer to where the result was stored.
+ * Starting function for newly spawned benchmark threads.
+ * @Param data: Pointer to array of pointer-sized arguments
+ * @Subparam data[0] func: Function to run in the test
+ * @Subparam data[1] latencyData: LatencyThreadData, passed to test function
+ * @Return: Returns a pointer to where the result was stored.
 */
 void *timeThread(void *raw) {
     uint64_t *data = (uint64_t *)raw;
@@ -70,6 +71,7 @@ void *timeThread(void *raw) {
 }
 
 /*
+ * Spawn the actual test thread and pass arguments to it.
  * @Param proc1: Processor index for first thread.
  * @Param proc2: Processor index for second thread.
  * @Param iter: How many iterations to perform.
@@ -108,6 +110,7 @@ double spawnTest(
 
 
 /*
+ * Starting function for starting test threads in parallel.
  * @Param raw: Void pointer to LatencyPairRunData structure.
  * @Return: Always returns NULL.
 */
@@ -148,6 +151,7 @@ int main(int argc, char **argv) {
     int parallelism = 1;
     int offsets = 1;
     int iterations = ITERS;
+    void (*thread_func)(LatencyThreadData *) = latencyTestThread;
 
     // Collect any command-line arguments
     for (int argIdx = 1; argIdx < argc; argIdx++) {
@@ -231,7 +235,7 @@ int main(int argc, char **argv) {
                         pair_run_data[selected_test_count].proc2 = partner;
                         pair_run_data[selected_test_count].iter = iterations;
                         pair_run_data[selected_test_count].result = &lat_ptr[partner + src * processors];
-                        pair_run_data[selected_test_count].thread_func = latencyTestThread;
+                        pair_run_data[selected_test_count].thread_func = thread_func;
                         // Set the target for this test to be at cacheline selected_test_count
                         // Offset it by the desired cacheline offsets, in 8 byte chunks
                         pair_run_data[selected_test_count].target = targets + (512 * selected_test_count + 8 * offset);

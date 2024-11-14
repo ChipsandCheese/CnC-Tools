@@ -15,6 +15,8 @@
 
 /* 
  * @Param func: The pointer of the function being timed.
+ * @Param data: Anonymous data that will be forwarded to func.
+ * @Param iterations: How many iterations to perform
  * @Return: Time in nanoseconds (up to nanosecond precision).
  */
 uint64_t timeExecution(void (*func)(void *), void *data, int iterations);
