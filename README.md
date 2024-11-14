@@ -1,2 +1,2 @@
 # CnC-Tools
-The new home for CnC Tests and Framework Libaries.  Very early, not fit for public viewing just yet.  Mainly looking for contributors to help get us to a public alpha state so we can get wider input.
+The home for CnC Tests and Framework Libaries updated and maintained by the CnC community.  Includes the full framework as well as a WIP implementation of clam's popular core coherency test.

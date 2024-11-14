@@ -4,12 +4,12 @@
  * Program Name: CnC Common Headers
  * File Name: platformCode.h
  * Date Created: January 21, 2024
- * Date Updated: November 9, 2024
- * Version: 0.4
+ * Date Updated: November 12, 2024
+ * Version: 0.5
  * Purpose: This file contains all functions that interact with platform-specific functionality
  */
 #ifdef __MINGW32__
-// MINGW (at least on debian) expects _aligned_malloc, while gcc and clang expect aligned_alloc
+//MINGW (at least on debian) expects _aligned_malloc, while gcc and clang expect aligned_alloc
 #define aligned_alloc(sz, aln) _aligned_malloc(sz, aln)
 #include <windows.h>
 #include <pthread.h>
@@ -20,17 +20,27 @@
 #include <unistd.h>
 
 #ifndef strcat_s
-// GNU doesn't implement this in default GCC, so it only works in MINGW?????????
+//Only implemented for windows targets in GCC/Clang, but its useful so we define it ourselves anyways
 int strcat_s(char *dest, int destsz, const char *src);
 #endif
 
 #endif
 
+/* Gets the current available number of logical threads.
+ * Should be called first as it populates the affinity mask table.
+ */
 int getThreadCount();
+
+/* Gets the core affinity for the provided pthread.
+ *@Param thread: the pthread to get affinity for.
+ */
 int getAffinity(pthread_t thread);
+
+/* Sets the core affinity for the provided pthread
+ *@Param thread: the pthread to get affinity for.
+ *@Param proc: the logical processor number to set the affinity to.
+ */
 int setAffinity(pthread_t thread, int proc);
-int createThread(pthread_t *handle, void *(*routine)(void *), void *argument);
-int joinThread(pthread_t handle, void **retval);
 
 
 #endif // PLATFORMCODE_H
