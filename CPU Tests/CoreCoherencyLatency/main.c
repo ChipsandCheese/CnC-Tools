@@ -273,11 +273,6 @@ int main(int argc, char **argv) {
     for (int offset = 0; offset < offsets; offset++) {
         for (int src = 0; src < processors; src++) {
             for (int partner = 0; partner < processors; partner++) {
-                // Ensure our caches are consistent
-                results[offset][partner + src * processors].raw = atomic_load_explicit(
-                    &results[offset][partner + src * processors].raw,
-                    memory_order_acquire
-                );
                 if (src == partner) printf("x");
                 else printf("%lf", results[offset][partner + src * processors].data);
 
