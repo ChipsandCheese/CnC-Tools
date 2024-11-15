@@ -131,8 +131,9 @@ void *runTest(void *raw) {
     lat2.target = data->target;
     lat1.result = 0.0;
     lat2.result = 0.0;
-    latency.data = spawnTest(data->iter, &lat1, &lat2, data->thread_func) / 2;
+    latency.data = spawnTest(data->iter, &lat1, &lat2, data->thread_func);
     fprintf(stderr, "%d to %d: %lf ns\n", lat1.processor_index, lat2.processor_index, latency.data);
+    latency.data /= 2.0;
     atomic_store(&data->result->raw, latency.raw);
     return NULL;
 }
