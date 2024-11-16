@@ -104,9 +104,15 @@
 #include <time.h>
 #include <stdint.h>
 
+//SZ = 1000 -> 3713160 primes
 #define SZ 1000
+
 int32_t primes[SZ], sieve[SZ];
 int nSieve = 0;
+
+/* Computes primes up to the specified SZ
+ *@Return: the number of computed primes
+ */
 
 int32_t countPrimes()
 {
@@ -138,7 +144,9 @@ int32_t countPrimes()
     return nPrimes;
 }
 
-int main(){
+
+int main()
+{
     printf("Starting run\n");
     clock_t start = clock();
     int res = countPrimes();
