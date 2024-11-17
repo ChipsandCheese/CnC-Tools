@@ -103,7 +103,7 @@ int delay(int iterations)
  */
 int testTiming()
 {
-    return timeExecution((void (*)(int))delay, 1000000000);
+    return timeExecution((void (*)(int))delay, (void *)1000000000, 1000000000);
 }
 
 

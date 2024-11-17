@@ -1,5 +1,6 @@
 #include <time.h>
 #include <stdint.h>
+#include <stdio.h>
 
 /*
  * Program Name: CnC Common Headers
@@ -10,21 +11,18 @@
  * Purpose: Provides a function to time the execution of the passed in function.
  */
 
-uint64_t timeExecution(void (*func)(int i), uint64_t iterations) {
-    //Only execute on positive values for iterations
-    if(iterations > 0)
-    {
-        struct timespec start;
-        struct timespec end;
-        clock_gettime(CLOCK_MONOTONIC, &start);//Start timing
-        func(iterations);
-        clock_gettime(CLOCK_MONOTONIC, &end);//End timing
-        uint64_t seconds = end.tv_sec - start.tv_sec;//calculate seconds diff
+uint64_t timeExecution(void (*func)(void *), void *data, int iterations) {
+    if (iterations > 0) {
+        struct timespec start = {.tv_sec = 0, .tv_nsec = 0};
+        struct timespec end = {.tv_sec = 0, .tv_nsec = 0};
+        if (clock_gettime(CLOCK_MONOTONIC, &start) != 0) //Start timing
+            fprintf(stderr, "Warning: Failed attempting to retrieve start time\n");
+        func(data);
+        if (clock_gettime(CLOCK_MONOTONIC, &end) != 0)//End timing
+            fprintf(stderr, "Warning: Failed attempting to retrieve end time\n");
+        uint64_t seconds = 1000000000 * (end.tv_sec - start.tv_sec);//calculate seconds diff
         uint64_t nanoseconds = end.tv_nsec - start.tv_nsec;//calculate nanoseconds diff
-        return (seconds * 1e9) + nanoseconds;
-    }
-    else
-    {
+        return seconds + nanoseconds;
+    } else
         return iterations;
-    }
 }
