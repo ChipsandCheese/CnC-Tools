@@ -7,12 +7,13 @@
  * Purpose: Unit Tests for the Framework
  */
 
-#include <platformCode.h>
 #include <stdio.h>
-#include <storage.h>
-#include <timing.h>
 #include <pthread.h>
 #include <string.h>
+
+#include <platformCode.h>
+#include <storage.h>
+#include <timing.h>
 
 #define TESTNAME "UnitTest"
 
@@ -91,7 +92,7 @@ int delay(int iterations)
 {
     volatile double a = 34.567876867;
     volatile double b = 24.313214355;
-    for(int i; i < iterations; i++);
+    for(int i; i < iterations; i++)
     {
         a += b;
     }
@@ -103,9 +104,8 @@ int delay(int iterations)
  */
 int testTiming()
 {
-    return timeExecution((void (*)(int))delay, (void *)1000000000, 1000000000);
+    return timeExecution((timed_execution_function_t) delay, (void *)1000000000, 1000000000);
 }
-
 
 
 int main(int argc, char *argv[])
