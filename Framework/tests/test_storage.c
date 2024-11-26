@@ -62,7 +62,7 @@ int test_storage() {
 }
 
 int main(int argc, char *argv[]) {
-  preamble();
+  preamble(argc, argv);
 
   int storageResult = test_storage();
   printf("Storage Test exited with return code %i\n", storageResult);

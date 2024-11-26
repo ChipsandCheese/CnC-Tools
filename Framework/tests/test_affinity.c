@@ -19,7 +19,7 @@ int testAffinity() {
 }
 
 int main(int argc, char *argv[]) {
-  preamble();
+  preamble(argc, argv);
 
   int affinityResult = testAffinity();
   printf("Thread Affinity Test exited with return code %i\n", affinityResult);

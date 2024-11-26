@@ -27,7 +27,7 @@ uint64_t testTiming() {
 }
 
 int main(int argc, char *argv[]) {
-  preamble();
+  preamble(argc, argv);
 
   uint64_t timingResult = testTiming();
   printf("Timing Test exited with result time of %lu nanoseconds\n",

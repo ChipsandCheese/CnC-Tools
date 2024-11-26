@@ -26,6 +26,10 @@ int strcat_s(char *dest, int destsz, const char *src);
 
 #endif
 
+/* Sets up the runtime and other platform specific code. 
+ */
+void setupPlatform(int argc, char** argv);
+
 /* Gets the current available number of logical threads.
  * Should be called first as it populates the affinity mask table.
  */

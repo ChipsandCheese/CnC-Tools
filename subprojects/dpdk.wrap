@@ -1,0 +1,7 @@
+[wrap-git]
+directory = dpdk
+
+url = https://dpdk.org/git/dpdk
+# update me to the full release when that happens
+revision = v24.11-rc3
+depth = 1

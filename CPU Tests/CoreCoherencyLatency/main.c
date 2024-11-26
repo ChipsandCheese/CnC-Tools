@@ -155,6 +155,8 @@ int main(int argc, char **argv) {
     int iterations = ITERS;
     void (*thread_func)(LatencyThreadData *) = latencyTestThread;
 
+    setupPlatform(argc, argv);
+
     // Collect any command-line arguments
     for (int argIdx = 1; argIdx < argc; argIdx++) {
         if (*(argv[argIdx]) == '-') {

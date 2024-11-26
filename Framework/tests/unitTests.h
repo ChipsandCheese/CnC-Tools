@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <stdnoreturn.h>
 #include <string.h>
+#include <platformCode.h>
 
 #define OUTPUT_DATA_EXTENSION ".cnc"
 #define OUTPUT_FILE_NAME (TEST_NAME OUTPUT_DATA_EXTENSION)
@@ -31,7 +32,8 @@ inline static void fatal_error(int code, const char *format, ...) {
   exit(code);
 }
 
-static void preamble() {
+static void preamble(int argc, char** argv) {
+  setupPlatform(argc, argv);
   printf("CnC Framework Unit Tests.  Return code 0 for success, 1 for "
          "verification failure, and 2 for IO error\n");
 }

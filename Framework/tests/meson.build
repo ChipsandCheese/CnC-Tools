@@ -22,5 +22,8 @@ foreach test_name : tests
         c_args: test_name_define
     )
 
-    test(test_name, unit_tests)
+    test(test_name, unit_tests, args: [
+        '--in-memory',
+        '--force-max-simd-bitwidth=512',
+    ])
 endforeach

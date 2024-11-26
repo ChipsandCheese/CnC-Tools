@@ -24,7 +24,7 @@ cnc_tools_framework = library(
         storage_lexer,
         storage_parser,        
     ],
-    dependencies: threads_dep,
+    dependencies: [threads_dep, dpdk_dep],
     include_directories: cnc_tools_framework_include_directories,
     install: true,
 )
@@ -32,7 +32,7 @@ cnc_tools_framework = library(
 cnc_tools_framework_dep = declare_dependency(
     include_directories: cnc_tools_framework_include_directories,
     link_with: cnc_tools_framework,
-    dependencies: threads_dep,
+    dependencies: [threads_dep],
 )
 
 subdir('tests')

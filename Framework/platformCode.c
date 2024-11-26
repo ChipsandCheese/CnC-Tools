@@ -1,4 +1,9 @@
 #include "platformCode.h"
+#include <stdlib.h>
+#include <rte_eal.h>
+#include <rte_errno.h>
+#include <stdio.h>
+#include <stdlib.h>
 /*
  * Program Name: CnC Common Headers
  * File Name: platformCode.c
@@ -75,6 +80,15 @@ int strcat_s(char *dest, int destsz, const char *src) {
     return 0;
 }
 #endif
+
+void setupPlatform(int argc, char** argv) {
+    int args_consumed = rte_eal_init(argc, argv);
+
+    if (args_consumed == -1) {
+        fprintf(stderr, "Error initializing DPDK: %s\n", rte_strerror(rte_errno));
+        exit(EXIT_FAILURE);
+    }
+}
 
 int getThreadCount()
 {
