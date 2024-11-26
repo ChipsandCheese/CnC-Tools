@@ -2,7 +2,9 @@ project('cnc-tools', 'c',
   version : '0.1',
   default_options : [
     'warning_level=3',
-    'buildtype=debugoptimized',
+    'buildtype=plain',
+    'debug=true',
+    'b_lto=true',
     'c_std=gnu11',
 ])
 
