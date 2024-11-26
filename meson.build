@@ -3,7 +3,7 @@ project('cnc-tools', 'c',
   default_options : [
     'warning_level=3',
     'buildtype=debugoptimized',
-    'c_std=gnu11,c11',
+    'c_std=gnu11',
 ])
 
 cc = meson.get_compiler('c')

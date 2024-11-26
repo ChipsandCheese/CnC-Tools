@@ -33,7 +33,7 @@ int test_storage() {
                 data.columnCount, data_copy.columnCount);
   }
 
-  for (int i = 0; i < data.columnCount; i++) {
+  for (size_t i = 0; i < data.columnCount; i++) {
     if (strcmp(data.columnNames[i], data_copy.columnNames[i])) {
       fatal_error(1,
                   "Incorrect column name for column %d, expected %d, got %d\n",
@@ -46,7 +46,7 @@ int test_storage() {
                 data.resultCount, data_copy.resultCount);
   }
 
-  for (int i = 0; i < data.resultCount; i++) {
+  for (size_t i = 0; i < data.resultCount; i++) {
     if (data.resultList[i] != data_copy.resultList[i]) {
       fatal_error(
           1, "Incorrect result list item for result %d, expected %d, got %d\n",

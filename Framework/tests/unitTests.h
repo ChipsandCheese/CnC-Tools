@@ -23,8 +23,7 @@
 #define OUTPUT_FILE_NAME (TEST_NAME OUTPUT_DATA_EXTENSION)
 #define MAX_FILE_NAME_LEN 50
 
-static void __attribute__((noreturn))
-fatal_error(int code, const char *format, ...) {
+inline static void fatal_error(int code, const char *format, ...) {
   va_list args;
   va_start(args, format);
   vprintf(format, args);

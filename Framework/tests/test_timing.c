@@ -13,6 +13,7 @@ int* delay(int* seconds) {
   //   a += b;
   // }
   while (sleep(*seconds) > 0) {}
+  return NULL;
 }
 
 /*

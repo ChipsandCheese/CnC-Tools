@@ -7,19 +7,19 @@ extern void set_yyin(FILE *fd);
 #define MAX_STR_LEN 256
 
 typedef struct {
-  int version;
-  int result_count;
-  int columnCount;
+  size_t version;
+  size_t result_count;
+  size_t columnCount;
   char test_name[MAX_STR_LEN];
 } CsvHeader;
 
 typedef struct {
   CsvHeader header;
   char *column_labels[100];
-  int label_count;
+  size_t label_count;
   float records[100][100];
-  int record_count;
-  int field_count[100];
+  size_t record_count;
+  size_t field_count[100];
 } CsvData;
 
 extern CsvData csv_data;
