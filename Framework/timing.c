@@ -2,6 +2,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "timing.h"
+
 /*
  * Program Name: CnC Common Headers
  * File Name: timing.c
@@ -10,8 +12,7 @@
  * Version: 0.1
  * Purpose: Provides a function to time the execution of the passed in function.
  */
-
-uint64_t timeExecution(void (*func)(void *), void *data, int iterations) {
+uint64_t timeExecution(timed_execution_function_t func, void *data, int iterations) {
     if (iterations > 0) {
         struct timespec start = {.tv_sec = 0, .tv_nsec = 0};
         struct timespec end = {.tv_sec = 0, .tv_nsec = 0};
