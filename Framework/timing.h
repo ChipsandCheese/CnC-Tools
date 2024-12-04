@@ -13,9 +13,6 @@
 
 //DO NOT DECLARE GLOBALS
 
-
-typedef void (*timed_execution_function_t)(void *);
-
 /* 
  * @Param func: The pointer of the function being timed.
  * @Param data: Anonymous data that will be forwarded to func.

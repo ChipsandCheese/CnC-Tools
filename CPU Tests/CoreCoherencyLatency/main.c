@@ -7,15 +7,14 @@
  * Purpose: Test Core-to-Core Latency of Multi-Core CPU's using Coherency checks.
  */
 
+#include <platformCode.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <timing.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <timing.h>
-#include <platformCode.h>
 
 typedef union Result {
     _Atomic uint64_t raw;
@@ -184,7 +183,7 @@ int main(int argc, char **argv) {
     // Allocate a buffer for all the currently resident threads to operate on
     uint64_t *targets = aligned_alloc(4096 * parallelism, 4096);
     LatencyPairRunData *pair_run_data = malloc(sizeof(LatencyPairRunData) * parallelism);
-    if (results == NULL || targets == NULL) {
+    if (results == NULL | targets == NULL) {
         fprintf(stderr, "Failed to allocate buffer\n");
         return -1;
     }
