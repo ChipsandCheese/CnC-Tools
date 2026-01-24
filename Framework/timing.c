@@ -17,7 +17,7 @@ uint64_t timeExecution(void (*func)(void *), void *data, int iterations) {
         struct timespec end = {.tv_sec = 0, .tv_nsec = 0};
         if (clock_gettime(CLOCK_MONOTONIC, &start) != 0) //Start timing
             fprintf(stderr, "Warning: Failed attempting to retrieve start time\n");
-        func(data);
+        func(iterations, data);
         if (clock_gettime(CLOCK_MONOTONIC, &end) != 0)//End timing
             fprintf(stderr, "Warning: Failed attempting to retrieve end time\n");
         uint64_t seconds = 1000000000 * (end.tv_sec - start.tv_sec);//calculate seconds diff
